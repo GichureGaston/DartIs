@@ -72,7 +72,7 @@ the answer back in the same format.
 
 ## Demo
 
-![description](assets/dartis.png)
+![description](assets/up.png)
 
 
 
