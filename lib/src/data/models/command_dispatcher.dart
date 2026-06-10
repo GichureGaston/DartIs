@@ -4,20 +4,35 @@ import '../../domain/domain.dart';
 import 'resp_codec.dart';
 
 class CommandDispatcher {
-  final StoreRepository _store;
-  late final SetKey _set;
-  late final GetKey _get;
-  late final DeleteKey _delete;
-  late final ExpireKey _expire;
-  late final ListKeys _listKeys;
+  final SetKey _set;
+  final GetKey _get;
+  final DeleteKey _delete;
+  final ExpireKey _expire;
+  final ListKeys _listKeys;
+  final ExistsKey _exists;
+  final GetTimeLeft _getTimeLeft;
+  final PersistKey _persist;
+  final FlushAll _flushAll;
 
-  CommandDispatcher({required StoreRepository store}) : _store = store {
-    _set = SetKey(store);
-    _get = GetKey(store);
-    _delete = DeleteKey(store);
-    _expire = ExpireKey(store);
-    _listKeys = ListKeys(store);
-  }
+  CommandDispatcher({
+    required SetKey setKey,
+    required GetKey getKey,
+    required DeleteKey deleteKey,
+    required ExpireKey expireKey,
+    required ListKeys listKeys,
+    required ExistsKey existsKey,
+    required GetTimeLeft getTimeLeft,
+    required PersistKey persistKey,
+    required FlushAll flushAll,
+  })  : _set = setKey,
+        _get = getKey,
+        _delete = deleteKey,
+        _expire = expireKey,
+        _listKeys = listKeys,
+        _exists = existsKey,
+        _getTimeLeft = getTimeLeft,
+        _persist = persistKey,
+        _flushAll = flushAll;
 
   Uint8List dispatch(List<String> command) {
     if (command.isEmpty) return RespCodec.encodeError('empty command');
@@ -110,7 +125,7 @@ class CommandDispatcher {
     if (args.isEmpty) {
       return RespCodec.encodeError('wrong number of arguments for EXISTS');
     }
-    final count = args.where((k) => _store.exists(k)).length;
+    final count = _exists(args);
     return RespCodec.encodeInteger(count);
   }
 
@@ -134,7 +149,7 @@ class CommandDispatcher {
     if (args.isEmpty) {
       return RespCodec.encodeError('wrong number of arguments for TTL');
     }
-    final ms = _store.timeLeftForKey(args[0]);
+    final ms = _getTimeLeft(args[0]);
     if (ms == null) return RespCodec.encodeInteger(-2);
     if (ms == -1) return RespCodec.encodeInteger(-1);
     return RespCodec.encodeInteger((ms / 1000).ceil());
@@ -144,7 +159,7 @@ class CommandDispatcher {
     if (args.isEmpty) {
       return RespCodec.encodeError('wrong number of arguments for PTTL');
     }
-    final ms = _store.timeLeftForKey(args[0]);
+    final ms = _getTimeLeft(args[0]);
     if (ms == null) return RespCodec.encodeInteger(-2);
     return RespCodec.encodeInteger(ms);
   }
@@ -153,7 +168,7 @@ class CommandDispatcher {
     if (args.isEmpty) {
       return RespCodec.encodeError('wrong number of arguments for PERSIST');
     }
-    return RespCodec.encodeInteger(_store.persists(args[0]) ? 1 : 0);
+    return RespCodec.encodeInteger(_persist(args[0]) ? 1 : 0);
   }
 
   Uint8List _keysCmd(List<String> args) {
@@ -162,7 +177,7 @@ class CommandDispatcher {
   }
 
   Uint8List _flushCmd() {
-    _store.flushData();
+    _flushAll();
     return RespCodec.ok;
   }
 }
